@@ -1,15 +1,15 @@
 Module.add( 'visual', () => {
 
 let ImgCache = {};
+Node.prototype.on = Node.prototype.addEventListener
 
-class Visual extends ListManager {
+class Visual {
 	constructor() {
-		super();
 		this.parent = null;
 		this.x = 0;
 		this.y = 0;
 		this.layoutFn = null;
-		this.elementFn = null;
+		this.elementLayoutFn = null;
 	}
 	get root() {
 		return this.parent || this;
@@ -19,40 +19,36 @@ class Visual extends ListManager {
 	get height() {
 	}
 	add(visual) {
-		super.add(visual);
-		visual.parent = this;
-		return visual;
+		console.assert(false);
 	}
 	align() {
+		if( !this.element ) return;
 		let r = this.rect;
 		this.element.style.left = r.x;
 		this.element.style.top = r.y;
 		this.element.style.width = r.width;
 		this.element.style.height = r.height;
 	}
-	link(className,elementFn,eventFn) {
-		let e = this.root.addElement(this,className,elementFn);
-		if( eventFn ) {
-			eventFn(e);
-		}
+	link(className,elementLayoutFn) {
+		return this.root.addElement(this,className,elementLayoutFn);
+	}
+	on(eventId,fn) {
+		return this.root.on(this.element,eventId,fn);
 	}
 	lay() {
 		if( this.layoutFn ) {
 			this.layoutFn(this);
 		}
-		if( this.element && !this.elementFn ) {
+		if( this.element && !this.elementLayoutFn ) {
 			this.align();
 		}
-		if( this.elementFn ) {
-			this.elementFn(this);
+		if( this.elementLayoutFn ) {
+			this.elementLayoutFn(this);
 		}
-		this.traverse( visual => visual.lay() );
 	}
 	tick(dt) {
-		this.traverse( visual => visual.tick(dt) );
 	}
 	render() {
-		this.traverse( visual => visual.render() );
 	}
 }
 
@@ -70,7 +66,7 @@ Visual.Line = class extends Visual {
 		ctx.moveTo(this.x, this.y);
 		ctx.lineTo(this.ex, this.ey);
 		ctx.stroke();
-		this.traverse( element => element.render() );
+		super.render();
 	}
 }
 
@@ -85,6 +81,7 @@ Visual.Sprite = class extends Visual {
 		this.yScale = null;
 		this.xAnchor = 0.5;
 		this.yAnchor = 0.5;
+		this.margin = 0;
 	}
 	set image(url) {
 		if( url === null ) return;
@@ -97,10 +94,10 @@ Visual.Sprite = class extends Visual {
 	}
 	get rect() {
 		return {
-			x: this.x-this.xAnchor*this.width,
-			y: this.y-this.yAnchor*this.height,
-			width: this.width,
-			height: this.height
+			x: this.x-this.xAnchor*this.width-this.margin,
+			y: this.y-this.yAnchor*this.height-this.margin,
+			width: this.width+this.margin*2,
+			height: this.height+this.margin*2
 		}
 	}
 	get image() {
@@ -167,15 +164,14 @@ Visual.Text = class extends Visual {
 }
 
 
-Visual.Canvas = class extends Visual{
-	constructor(rootDiv,LayoutSpecification) {
-		super();
-
+Visual.Canvas = class {
+	constructor(rootDiv,LayoutSpecification,data) {
 		window.addEventListener('resize', () => {
 			this.sizeToDiv();
 		});
 
-		this.visuals = {};
+		this.visual = {};
+		this.element = {};
 
 		this.canvas  = document.createElement("canvas");                 // Create a <li> node
 		this.canvas.style.position = 'absolute';
@@ -193,9 +189,10 @@ Visual.Canvas = class extends Visual{
 
 		this.div.insertBefore(this.overlay,this.canvas)
 
-		this.sizeToDiv();
-
+		this.data   = data;
 		this.layout = new LayoutSpecification(this);
+
+		this.sizeToDiv();
 	}
 	get pixelRatio() {
 		var ctx = document.createElement('canvas').getContext('2d');
@@ -228,31 +225,45 @@ Visual.Canvas = class extends Visual{
 	get height() {
 		return parseInt(this.canvas.style.height);
 	}
-	addVisuals(hash) {
-		Object.each( hash, (pair,id) => {
-			this.visuals[id] = pair[0];
-			pair[0].id = id;
-			pair[0].layoutFn = pair[1]
-			this.add(pair[0]);
-		});
+	addVisual(id,visual,layoutFn) {
+		visual.id = id;
+		visual.layoutFn = layoutFn
+		this.visual[id] = visual;
+		visual.parent = this;
+		return visual;
 	}
-	addElement(visual,className,elementFn) {
-		let e = document.createElement("div");
-		e.style.position = "absolute";
-		e.classList.add(className);
-		this.overlay.appendChild(e);
-		visual.element   = e;
-		visual.elementFn = elementFn;
-		return e;
+	addVisualHash(visualHash) {
+		Object.each( visualHash, (pair,id) => this.addVisual( id, pair[0], pair[1] ) );
+		return this.visual;
+	}
+	on(element,eventId,fn) {
+		return element.on( eventId, fn );
+	}
+	addElement(visual,className,elementLayoutFn) {
+		let element = document.createElement("div");
+		element.style.position = "absolute";
+		element.classList.add(className);
+		this.overlay.appendChild(element);
+		this.element[visual.id] = element;
+		visual.element   = element;
+		visual.elementLayoutFn = elementLayoutFn;
+		return element;
+	}
+	traverse(fn) {
+		Object.each( this.visual, fn );
+	}
+	lay() {
+		this.traverse( visual => visual.lay() );
 	}
 	tick(dt) {
-		super.tick(dt);
+		this.data.update();
+		this.traverse( visual => visual.tick(dt) );
 		this.lay();
 	}
 	render() {
 		this.context.fillStyle = 'black';
 		this.context.fillRect(0,0,this.width,this.height);
-		super.render();
+		this.traverse( visual => visual.render() );
 	}
 }
 

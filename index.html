@@ -10,6 +10,7 @@
 
 <script src="utilities.js" charset="utf-8"></script>
 <script src="time.js" charset="utf-8"></script>
+<script src="gui.js" charset="utf-8"></script>
 
 <script src="visual.js" charset="utf-8"></script>
 <script src="panelProductivity.js" charset="utf-8"></script>
@@ -17,85 +18,115 @@
 <script>
 Module.realize();
 
-function createVisualCanvas(rootDiv) {
-	let root = new Visual.Canvas(rootDiv,ProductivityPanelLayout);
+class VisualDataSource {
+	constructor() {
+	}
+	update() {
+	}
+}
+
+class ProductivityData extends VisualDataSource {
+	constructor() {
+		super();
+		this.wellbeingIconHash = {
+			food:	'icons/food.png',
+			water:	'icons/water.png',	
+			rest:	'icons/rest.png',
+			health:	'icons/health.png'
+		}
+		this.init();
+		this.update();
+	}
+	init() {
+		this.food = -0.2;
+		this.water = 0.0;
+		this.rest = -0.1;
+		this.health = 0.0;
+		this.skill = 1.2;
+		this.morale = -0.3;
+		this.wellbeing = this[this.wellbeingLeast];
+		this.gear = 0;
+		this.venue = 0;
+		return this;
+	}
+	update() {
+		this.wellbeing = this[this.wellbeingLeast];
+		return this;
+	}
+	totals(index) {
+		console.assert( index >=0 && index <=4 );
+		return [
+			this.skill,
+			this.skill+this.morale,
+			this.skill+this.morale+this.wellbeing,
+			this.skill+this.morale+this.wellbeing+this.gear,
+			this.skill+this.morale+this.wellbeing+this.gear+this.venue
+		][index];
+	}
+	get wellbeingLeast() {
+		let least = 'food';
+		least = this.water  < this[least] ? 'water'  : least;
+		least = this.rest   < this[least] ? 'rest'   : least;
+		least = this.health < this[least] ? 'health' : least;
+		return least;
+	}
+	get wellbeingIcon() {
+		return this.wellbeingIconHash[this.wellbeingLeast];
+	}
+};
+
+function createPanelProductivity(rootDiv,data) {
+	let root = new Visual.Canvas(rootDiv,ProductivityPanelLayout,data);
 	let layout = root.layout;
 
-	let stats = () => {
-		let skill = 1.2;
-		let morale = -0.3;
-		let wellbeing = -0.4;
-		let gear = 0;
-		let venue = 0;
-
-		let marks = [
-			skill,
-			skill+morale,
-			skill+morale+wellbeing,
-			skill+morale+wellbeing+gear,
-			skill+morale+wellbeing+gear+venue
-		];
-		return marks;
-	}
-
 	// everything gets a layout fun, so...
-	let visuals = {
-		skill:		[ new Visual.Sprite('icons/skill.png'),	(e) => layout.xLegend(e,0) ],
-		morale: 	[ new Visual.Sprite('icons/morale.png'),	(e) => layout.xLegend(e,1) ],
-		wellbeing:	[ new Visual.Sprite('icons/food.png'),	(e) => layout.xLegend(e,2) ],
-		gear:		[ new Visual.Sprite('icons/goods.png'),	(e) => layout.xLegend(e,3) ],
-		household:	[ new Visual.Sprite('icons/household.png'),	(e) => layout.xLegend(e,4) ],
-		production:	[ new Visual.Sprite('icons/production.png'),	(e) => layout.xLegend(e,5.5,1.3) ],
+	let visual = root.addVisualHash({
+		skill:		[ new Visual.Sprite('icons/skill.png'),		(v) => layout.xLegend(v,0) ],
+		morale: 	[ new Visual.Sprite('icons/morale.png'),	(v) => layout.xLegend(v,1) ],
+		wellbeing:	[ new Visual.Sprite(null),					(v) => { layout.xLegend(v,2); v.image=data.wellbeingIcon; } ],
+		gear:		[ new Visual.Sprite('icons/goods.png'),		(v) => layout.xLegend(v,3) ],
+		household:	[ new Visual.Sprite('icons/household.png'),	(v) => layout.xLegend(v,4) ],
+		production:	[ new Visual.Sprite('icons/production.png'),(v) => layout.xLegend(v,5.5,1.3) ],
 
-		L0:			[ new Visual.Line('white',2),	(e) => layout.line(e,0) ],
-		L1:			[ new Visual.Line('gray',1),	(e) => layout.line(e,1) ],
-		L2:			[ new Visual.Line('gray',1),	(e) => layout.line(e,2) ],
+		L0:			[ new Visual.Line('white',2),	(v) => layout.line(v,0) ],
+		L1:			[ new Visual.Line('gray',1),	(v) => layout.line(v,1) ],
+		L2:			[ new Visual.Line('gray',1),	(v) => layout.line(v,2) ],
 
-		title:		[ new Visual.Text('white','Production'), (e) => layout.title(e) ],
+		title:		[ new Visual.Text('white','Production'), (v) => layout.title(v) ],
 
-		yL0:		[ new Visual.Text('white','0x'), (e) => layout.yLegend(e,0) ],
-		yL1:		[ new Visual.Text('white','1x'), (e) => layout.yLegend(e,1) ],
-		yL2:		[ new Visual.Text('white','2x'), (e) => layout.yLegend(e,2) ],
+		yL0:		[ new Visual.Text('white','0x'), (v) => layout.yLegend(v,0) ],
+		yL1:		[ new Visual.Text('white','1x'), (v) => layout.yLegend(v,1) ],
+		yL2:		[ new Visual.Text('white','2x'), (v) => layout.yLegend(v,2) ],
 
-		b0:			[ new Visual.Sprite(null), (e) => layout.bar(e,0,1, 0.0,stats()[0] ) ],
-		b1:			[ new Visual.Sprite(null), (e) => layout.bar(e,1,1, stats()[0],stats()[1] ) ],
-		b2:			[ new Visual.Sprite(null), (e) => layout.bar(e,2,1, stats()[1],stats()[2] ) ],
-		b3:			[ new Visual.Sprite(null), (e) => layout.bar(e,3,1, stats()[2],stats()[3] ) ],
-		b4:			[ new Visual.Sprite(null), (e) => layout.bar(e,4,1, stats()[3],stats()[4] ) ],
-		b5:			[ new Visual.Sprite(null), (e) => layout.bar(e,5.5,1.3, 0.0,stats()[4], false) ]
-	};
-	root.addVisuals( visuals );
+		b0:			[ new Visual.Sprite(null), (v) => layout.bar(v,0,1, 0.0,data.totals(0) ) ],
+		b1:			[ new Visual.Sprite(null), (v) => layout.bar(v,1,1, data.totals(0),data.totals(1) ) ],
+		b2:			[ new Visual.Sprite(null), (v) => layout.bar(v,2,1, data.totals(1),data.totals(2) ) ],
+		b3:			[ new Visual.Sprite(null), (v) => layout.bar(v,3,1, data.totals(2),data.totals(3) ) ],
+		b4:			[ new Visual.Sprite(null), (v) => layout.bar(v,4,1, data.totals(3),data.totals(4) ) ],
+		b5:			[ new Visual.Sprite(null), (v) => layout.bar(v,5.5,1.3, 0.0,data.totals(4), false) ]
+	});
 
-	function decorate(element) {
-		element.addEventListener( 'click', ()=>{
-				debugger;
-			})
-		;
-	}
-
-	root.visuals.skill.link('iconButton',null,decorate);
-	root.visuals.morale.link('iconButton',null,decorate)
-	root.visuals.wellbeing.link('iconButton',null,decorate);
-	root.visuals.gear.link('iconButton',null,decorate);
-	root.visuals.household.link('iconButton',null,decorate);
+	visual.skill.link('iconButton')
+		.on('click',()=>{})
+	;
+	visual.morale.link('iconButton')
+		.on('click',()=>{})
+	;
+	visual.wellbeing.link('iconButton')
+		.on('click',()=>{ 
+			data.rest -= 0.1;
+		})
+	;
+	visual.gear.link('iconButton')
+		.on('click',()=>{})
+	;
+	visual.household.link('iconButton')
+		.on('click',()=>{})
+	;
 
 	return root;
 }
 
-let Gui = {
-	layout: function(layoutList) {
-		Object.each( layoutList, (layout,divId) => {
-			Object.each( layout, (fn,key) => {
-				let me = $(divId);
-				if( me.length ) {
-					let value = fn($(divId));
-					me[key](value);
-					//console.log( 'Set '+divId+'.'+key+' = '+value );
-				}
-			});
-		});
-	}
-}
 
 function onResize() {
 	Gui.layout({
@@ -109,7 +140,8 @@ function onResize() {
 }
 
 function main() {
-	let root = createVisualCanvas('drawingArea');
+	let data = new ProductivityData();
+	let root = createPanelProductivity('drawingArea',data);
 	window.addEventListener('resize', onResize );
 	onResize();
 

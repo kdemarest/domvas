@@ -47,6 +47,7 @@ let ProductivityPanelLayout = (function(root) {
 	this.xLegend = (e,colIndex,scale=1) => {
 		e.x = body().col(colIndex);
 		e.y = baseRect().yMid;
+		let pixelMargin = 3;
 		e.scaleToWidth( Math.min(body().xSpan*0.70,baseRect().height) );
 		e.scale *= scale;
 	}
@@ -74,6 +75,8 @@ let ProductivityPanelLayout = (function(root) {
 	}
 
 	this.bar = (e,colIndex,xScale,floor,ceiling,useArrows=true) => {
+		floor	= Math.max(0,floor);
+		ceiling = Math.max(0,ceiling);
 		let image		= !useArrows ? 'icons/vertBar.png' : floor==ceiling ? 'icons/vertBar.png' : floor < ceiling ? 'icons/arrowUp.png' : 'icons/arrowDn.png';
 		let yFloor		= body().row(floor);
 		let yCeiling	= body().row(ceiling);
