@@ -74,9 +74,13 @@ let ProductivityPanelLayout = (function(root) {
 	}
 
 	this.bar = (e,colIndex,xScale,floor,ceiling,useArrows=true) => {
-		let image		= !useArrows ? 'vertBar.png' : floor < ceiling ? 'arrowUp.png' : 'arrowDn.png';
+		let image		= !useArrows ? 'icons/vertBar.png' : floor==ceiling ? 'icons/vertBar.png' : floor < ceiling ? 'icons/arrowUp.png' : 'icons/arrowDn.png';
 		let yFloor		= body().row(floor);
 		let yCeiling	= body().row(ceiling);
+		if( yFloor == yCeiling ) {
+			yFloor -= 2;
+			yCeiling += 2;
+		}
 		e.image = image;
 		e.x = body().col(colIndex);
 		e.y = Math.max( yFloor, yCeiling );

@@ -40,12 +40,12 @@ function createVisualCanvas(rootDiv) {
 
 	// everything gets a layout fun, so...
 	let visuals = {
-		skill:		[ new Visual.Sprite('skill.png'),	(e) => layout.xLegend(e,0) ],
-		morale: 	[ new Visual.Sprite('morale.png'),	(e) => layout.xLegend(e,1) ],
-		wellbeing:	[ new Visual.Sprite('food.png'),	(e) => layout.xLegend(e,2) ],
-		gear:		[ new Visual.Sprite('goods.png'),	(e) => layout.xLegend(e,3) ],
-		household:	[ new Visual.Sprite('household.png'),	(e) => layout.xLegend(e,4) ],
-		production:	[ new Visual.Sprite('production.png'),	(e) => layout.xLegend(e,5.5,1.3) ],
+		skill:		[ new Visual.Sprite('icons/skill.png'),	(e) => layout.xLegend(e,0) ],
+		morale: 	[ new Visual.Sprite('icons/morale.png'),	(e) => layout.xLegend(e,1) ],
+		wellbeing:	[ new Visual.Sprite('icons/food.png'),	(e) => layout.xLegend(e,2) ],
+		gear:		[ new Visual.Sprite('icons/goods.png'),	(e) => layout.xLegend(e,3) ],
+		household:	[ new Visual.Sprite('icons/household.png'),	(e) => layout.xLegend(e,4) ],
+		production:	[ new Visual.Sprite('icons/production.png'),	(e) => layout.xLegend(e,5.5,1.3) ],
 
 		L0:			[ new Visual.Line('white',2),	(e) => layout.line(e,0) ],
 		L1:			[ new Visual.Line('gray',1),	(e) => layout.line(e,1) ],
