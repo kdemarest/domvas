@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta charset="utf-8"/>
+
+<link rel="stylesheet" type="text/css" href="minireset.css">
+<link rel="stylesheet" type="text/css" href="index.css">
+
+<script src="jquery.3.3.1.js" charset="utf-8"></script>
+<script src="utilModule.js" charset="utf-8"></script>
+
+<script src="utilities.js" charset="utf-8"></script>
+<script src="time.js" charset="utf-8"></script>
+
+<script src="visual.js" charset="utf-8"></script>
+<script src="panelProductivity.js" charset="utf-8"></script>
+
+<script>
+Module.realize();
+
+function createVisualCanvas(rootDiv) {
+	let root = new Visual.Canvas(rootDiv,ProductivityPanelLayout);
+	let layout = root.layout;
+
+	let stats = () => {
+		let skill = 1.2;
+		let morale = -0.3;
+		let wellbeing = -0.4;
+		let gear = 0;
+		let venue = 0;
+
+		let marks = [
+			skill,
+			skill+morale,
+			skill+morale+wellbeing,
+			skill+morale+wellbeing+gear,
+			skill+morale+wellbeing+gear+venue
+		];
+		return marks;
+	}
+
+	// everything gets a layout fun, so...
+	let visuals = {
+		skill:		[ new Visual.Sprite('skill.png'),	(e) => layout.xLegend(e,0) ],
+		morale: 	[ new Visual.Sprite('morale.png'),	(e) => layout.xLegend(e,1) ],
+		wellbeing:	[ new Visual.Sprite('food.png'),	(e) => layout.xLegend(e,2) ],
+		gear:		[ new Visual.Sprite('goods.png'),	(e) => layout.xLegend(e,3) ],
+		household:	[ new Visual.Sprite('household.png'),	(e) => layout.xLegend(e,4) ],
+		production:	[ new Visual.Sprite('production.png'),	(e) => layout.xLegend(e,5.5,1.3) ],
+
+		L0:			[ new Visual.Line('white',2),	(e) => layout.line(e,0) ],
+		L1:			[ new Visual.Line('gray',1),	(e) => layout.line(e,1) ],
+		L2:			[ new Visual.Line('gray',1),	(e) => layout.line(e,2) ],
+
+		title:		[ new Visual.Text('white','Production'), (e) => layout.title(e) ],
+
+		yL0:		[ new Visual.Text('white','0x'), (e) => layout.yLegend(e,0) ],
+		yL1:		[ new Visual.Text('white','1x'), (e) => layout.yLegend(e,1) ],
+		yL2:		[ new Visual.Text('white','2x'), (e) => layout.yLegend(e,2) ],
+
+		b0:			[ new Visual.Sprite(null), (e) => layout.bar(e,0,1, 0.0,stats()[0] ) ],
+		b1:			[ new Visual.Sprite(null), (e) => layout.bar(e,1,1, stats()[0],stats()[1] ) ],
+		b2:			[ new Visual.Sprite(null), (e) => layout.bar(e,2,1, stats()[1],stats()[2] ) ],
+		b3:			[ new Visual.Sprite(null), (e) => layout.bar(e,3,1, stats()[2],stats()[3] ) ],
+		b4:			[ new Visual.Sprite(null), (e) => layout.bar(e,4,1, stats()[3],stats()[4] ) ],
+		b5:			[ new Visual.Sprite(null), (e) => layout.bar(e,5.5,1.3, 0.0,stats()[4], false) ]
+	};
+	root.addVisuals( visuals );
+
+	function decorate(element) {
+		element.addEventListener( 'click', ()=>{
+				debugger;
+			})
+		;
+	}
+
+	root.visuals.skill.link('iconButton',null,decorate);
+	root.visuals.morale.link('iconButton',null,decorate)
+	root.visuals.wellbeing.link('iconButton',null,decorate);
+	root.visuals.gear.link('iconButton',null,decorate);
+	root.visuals.household.link('iconButton',null,decorate);
+
+	return root;
+}
+
+let Gui = {
+	layout: function(layoutList) {
+		Object.each( layoutList, (layout,divId) => {
+			Object.each( layout, (fn,key) => {
+				let me = $(divId);
+				if( me.length ) {
+					let value = fn($(divId));
+					me[key](value);
+					//console.log( 'Set '+divId+'.'+key+' = '+value );
+				}
+			});
+		});
+	}
+}
+
+function onResize() {
+	Gui.layout({
+		'#guiMain': {
+			height: self => $('body').height() - self.offset().top - parseInt(self.css('margin-bottom'))
+		},
+		'#drawingArea': {
+			height: self => $('#guiMain').height()
+		}
+	});
+}
+
+function main() {
+	let root = createVisualCanvas('drawingArea');
+	window.addEventListener('resize', onResize );
+	onResize();
+
+	setTimeout( ()=>{
+		let event = new Event('resize');
+		window.dispatchEvent(event);
+	}, 100 );
+
+	Time.animationFrameTicker( dt => {
+		root.tick(dt);
+		root.render();
+	});
+}
+
+</script>
+
+
+
+</head>
+<body style='overflow-x: hidden; overflow-y: hidden;'>
+	<div id="guiMain" style="position: absolute; width: 600px; margin:30px;">
+		<div id="drawingArea">
+		</div>
+	</div>
+	<script>
+	document.addEventListener("DOMContentLoaded", () => {
+		main();
+	})
+	</script>
+
+</body>
+</html>
