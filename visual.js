@@ -1,7 +1,10 @@
 Module.add( 'visual', () => {
 
 let ImgCache = {};
-Node.prototype.on = Node.prototype.addEventListener
+Node.prototype.on = function(...args) {
+	Node.prototype.addEventListener.call(this,...args);
+	return this;
+}
 
 class Visual {
 	constructor() {
@@ -57,15 +60,18 @@ Visual.Line = class extends Visual {
 		super();
 		this.color = color;
 		this.thickness = thickness;
+		this.dash = [];
 	}
 	render() {
 		var ctx = this.root.context;
 		ctx.beginPath();
+		ctx.setLineDash(this.dash);
 		ctx.strokeStyle = this.color;
 		ctx.lineWidth	= this.thickness;
 		ctx.moveTo(this.x, this.y);
 		ctx.lineTo(this.ex, this.ey);
 		ctx.stroke();
+		ctx.setLineDash([]);
 		super.render();
 	}
 }
@@ -118,9 +124,9 @@ Visual.Sprite = class extends Visual {
 	scaleToWidth(w) {
 		this.scale = w / this.naturalWidth;
 	}
-	scaleToHeight(w) {
+	scaleToHeight(h) {
 		if( this.image.loaded ) {
-			this.scale = w / this.naturalWidth;
+			this.scale = h / this.naturalHeight;
 		}
 	}
 	render() {
@@ -147,6 +153,9 @@ Visual.Text = class extends Visual {
 		this.textWidth = null
 		this.textHeight = null;
 	}
+	setText(text) {
+		this.text = text;
+	}
 	textWidthAt(px) {
 		this.root.context.font = ''+px+'px Arial';
 		return this.root.context.measureText(this.text).width;
@@ -163,23 +172,56 @@ Visual.Text = class extends Visual {
 	}
 }
 
+Visual.Arc = class extends Visual {
+	constructor(color,fill,inner,outer,start,end,thickness=1) {
+		super();
+		this.color  = color || 'white';
+		this.fill	= fill || 'grey';
+		this.outer = outer;
+		this.inner  = inner;
+		this.start  = start;
+		this.end    = end;
+		this.thickness = thickness;
+		console.log(this);
+	}
+	render() {
+		let pt = (radians,dist) => [ this.x+Math.cos(radians)*dist, this.y+Math.sin(radians)*dist ];
+
+		let ctx = this.root.context;
+		ctx.fillStyle   = this.fill;
+		ctx.strokeStyle = this.color;
+		ctx.lineWidth	= this.thickness;
+
+		console.assert( this.start <= this.end );
+
+		ctx.beginPath();
+		ctx.moveTo( ...pt(this.start,this.inner) );
+		ctx.lineTo( ...pt(this.start,this.outer) );
+		ctx.arc( this.x, this.y, this.outer, this.start, this.end );
+		ctx.lineTo( ...pt(this.end,this.inner) );
+		ctx.arc( this.x, this.y, this.inner, this.end, this.start, true );
+		ctx.fill();
+		ctx.stroke();
+	}
+}
+
 
 Visual.Canvas = class {
-	constructor(rootDiv,LayoutSpecification,data) {
+	constructor(rootDiv,makeComponentFn) {
 		window.addEventListener('resize', () => {
 			this.sizeToDiv();
 		});
 
-		this.visual = {};
-		this.element = {};
+		this.data		= null;
+		this.layout		= null;
+		this.element	= {};
+		this.visual		= {};
 
 		this.canvas  = document.createElement("canvas");                 // Create a <li> node
 		this.canvas.style.position = 'absolute';
 		this.context = this.canvas.getContext('2d');
 
 		this.div = document.getElementById(rootDiv);
-		this.div.style.position = "absolute";
-		this.div.style.width = "100%";
 
 		this.div.appendChild(this.canvas);
 
@@ -189,8 +231,7 @@ Visual.Canvas = class {
 
 		this.div.insertBefore(this.overlay,this.canvas)
 
-		this.data   = data;
-		this.layout = new LayoutSpecification(this);
+		makeComponentFn(this);
 
 		this.sizeToDiv();
 	}
@@ -232,9 +273,16 @@ Visual.Canvas = class {
 		visual.parent = this;
 		return visual;
 	}
-	addVisualHash(visualHash) {
+	addLayout(layout) {
+		this.layout = layout;
+	}
+	addVisuals(visualHash) {
 		Object.each( visualHash, (pair,id) => this.addVisual( id, pair[0], pair[1] ) );
-		return this.visual;
+	}
+	addElements(elements) {
+	}
+	addData(data) {
+		this.data = data;
 	}
 	on(element,eventId,fn) {
 		return element.on( eventId, fn );
@@ -264,6 +312,13 @@ Visual.Canvas = class {
 		this.context.fillStyle = 'black';
 		this.context.fillRect(0,0,this.width,this.height);
 		this.traverse( visual => visual.render() );
+	}
+}
+
+Visual.Data = class {
+	constructor() {
+	}
+	update() {
 	}
 }
 

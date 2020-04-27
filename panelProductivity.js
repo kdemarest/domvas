@@ -1,6 +1,10 @@
 Module.add( 'panelProductivity', ()=>{
 
-let ProductivityPanelLayout = (function(root) {
+let PanelProductivity = {};
+
+
+PanelProductivity.Layout = (function(root) {
+	console.assert( root );
 
 	let graphRect = () => {
 		let xMargin = 0.05;
@@ -21,7 +25,7 @@ let ProductivityPanelLayout = (function(root) {
 			x: g.x,
 			y: top,
 			yMid: top + (root.height-top)*0.5,
-			width: g.width*0.70,
+			width: g.width*0.80,
 			height: root.height-top
 		}
 	}
@@ -47,9 +51,9 @@ let ProductivityPanelLayout = (function(root) {
 	this.xLegend = (e,colIndex,scale=1) => {
 		e.x = body().col(colIndex);
 		e.y = baseRect().yMid;
-		let pixelMargin = 3;
 		e.scaleToWidth( Math.min(body().xSpan*0.70,baseRect().height) );
 		e.scale *= scale;
+		e.margin = 3;	// the border on hover is this wide.
 	}
 
 	this.line = (e,rowIndex) => {
@@ -94,8 +98,66 @@ let ProductivityPanelLayout = (function(root) {
  	return this;
 });
 
+PanelProductivity.Visuals = function (root) {
+	console.assert( root && root.layout && root.data );
+	let layout = root.layout;
+	let data   = root.data;
+
+	// everything gets a layout fun, so...
+	return {
+		skill:		[ new Visual.Sprite('icons/skill.png'),		(v) => layout.xLegend(v,0) ],
+		morale: 	[ new Visual.Sprite('icons/morale.png'),	(v) => { layout.xLegend(v,1,0.9); v.image=data.moraleIcon; } ],
+		wellbeing:	[ new Visual.Sprite(null),					(v) => { layout.xLegend(v,2); v.image=data.wellbeingIcon; } ],
+		gear:		[ new Visual.Sprite('icons/goods.png'),		(v) => layout.xLegend(v,3) ],
+		household:	[ new Visual.Sprite('icons/household.png'),	(v) => layout.xLegend(v,4) ],
+		production:	[ new Visual.Sprite('icons/production.png'),(v) => layout.xLegend(v,5.2,1.3) ],
+
+		L0:			[ new Visual.Line('white',2),	(v) => layout.line(v,0) ],
+		L1:			[ new Visual.Line('gray',1),	(v) => layout.line(v,1) ],
+		L2:			[ new Visual.Line('gray',1),	(v) => layout.line(v,2) ],
+
+		title:		[ new Visual.Text('white','Production'), (v) => layout.title(v) ],
+
+		yL0:		[ new Visual.Text('white','0x'), (v) => layout.yLegend(v,0) ],
+		yL1:		[ new Visual.Text('white','1x'), (v) => layout.yLegend(v,1) ],
+		yL2:		[ new Visual.Text('white','2x'), (v) => layout.yLegend(v,2) ],
+
+		b0:			[ new Visual.Sprite(null), (v) => layout.bar(v,0,1, 0.0,data.totals(0) ) ],
+		b1:			[ new Visual.Sprite(null), (v) => layout.bar(v,1,1, data.totals(0),data.totals(1) ) ],
+		b2:			[ new Visual.Sprite(null), (v) => layout.bar(v,2,1, data.totals(1),data.totals(2) ) ],
+		b3:			[ new Visual.Sprite(null), (v) => layout.bar(v,3,1, data.totals(2),data.totals(3) ) ],
+		b4:			[ new Visual.Sprite(null), (v) => layout.bar(v,4,1, data.totals(3),data.totals(4) ) ],
+		b5:			[ new Visual.Sprite(null), (v) => layout.bar(v,5.2,1.3, 0.0,data.totals(4), false) ]
+	}
+}
+
+PanelProductivity.Elements = (function(root) {
+	console.assert( root && root.visual && root.data );
+	let visual	= root.visual;
+	let data	= root.data;
+
+	visual.skill.link('iconButton')
+		.on('click',()=>{})
+	;
+	visual.morale.link('iconButton')
+		.on('click',()=>{ data.morale+=0.1; })
+	;
+	visual.wellbeing.link('iconButton')
+		.on('click',()=>{ 
+			data.rest -= 0.1;
+		})
+	;
+	visual.gear.link('iconButton')
+		.on('click',()=>{})
+	;
+	visual.household.link('iconButton')
+		.on('click',()=>{})
+	;
+});
+
+
 return {
-	ProductivityPanelLayout: ProductivityPanelLayout
+	PanelProductivity: PanelProductivity
 }
 
 })

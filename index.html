@@ -13,45 +13,141 @@
 <script src="gui.js" charset="utf-8"></script>
 
 <script src="visual.js" charset="utf-8"></script>
+<script src="panelMorale.js" charset="utf-8"></script>
+<script src="panelWellbeing.js" charset="utf-8"></script>
 <script src="panelProductivity.js" charset="utf-8"></script>
 
 <script>
 Module.realize();
 
-class VisualDataSource {
-	constructor() {
-	}
-	update() {
-	}
-}
-
-class ProductivityData extends VisualDataSource {
+let DataWellbeing = class extends Visual.Data {
 	constructor() {
 		super();
-		this.wellbeingIconHash = {
+		this.iconHash = {
 			food:	'icons/food.png',
 			water:	'icons/water.png',	
 			rest:	'icons/rest.png',
 			health:	'icons/health.png'
 		}
+		this.info = '';
 		this.init();
 		this.update();
 	}
 	init() {
-		this.food = -0.2;
+		this.food = -0.2;	// converted from 0-200% to -1.0 to +1.0
 		this.water = 0.0;
 		this.rest = -0.1;
 		this.health = 0.0;
+	}
+	update() {
+		this.food	= Math.clamp(this.food,-1.0,0.0);	// converted from 0-200% to -1.0 to +1.0
+		this.water	= Math.clamp(this.water,-1.0,0.0);
+		this.rest	= Math.clamp(this.rest,-1.0,0.0);
+		this.health	= Math.clamp(this.health,-1.0,0.0);
+	}
+	time(aspectId) {
+		let value = this[aspectId];
+		console.assert( Number.isFinite(value) );
+		let color = value < -0.5 ? 'red' : value < 0.0 ? 'yellow' : 'white';
+		let text = value < 0 ? '2w' : '';
+		return { color: color, text: text };
+	}
+	analyze(aspectId) {
+		this.info = 'hovering '+aspectId;
+	}
+	get least() {
+		let least = 'food';
+		least = this.water  < this[least] ? 'water'  : least;
+		least = this.rest   < this[least] ? 'rest'   : least;
+		least = this.health < this[least] ? 'health' : least;
+		return least;
+	}
+	get value() {
+		return Math.clamp( this[this.least], -1.0, 0.0 );
+	}
+
+	get icon() {
+		return this.iconHash[this.least];
+	}
+}
+
+let DataMorale = class extends Visual.Data {
+	constructor() {
+		super();
+		this.init();
+		this.update();
+		this.info = '';
+	}
+	init() {
+		this.leadership		= 1.2;
+		this.security		= 1.4;
+		this.entertainment	= 1.10;
+		this.children		= 1.0;
+	}
+	analyze(aspectId) {
+		this.info = 'hovering '+aspectId;
+	}
+	get leadershipPct() {
+		return Math.clamp( this.leadership * 0.30, 0, 2);
+	}
+	get securityPct() {
+		return Math.clamp( this.security * 0.30, 0, 2 );
+	}
+	get entertainmentPct() {
+		return Math.clamp( this.entertainment * 0.25, 0, 2 );
+	}
+	get childrenPct() {
+		return Math.clamp( this.children * 0.15, 0, 2 );
+	}
+	update() {
+
+	}
+	get value() {
+		return this.rot(3);
+	}
+	get icon() {
+		return this.value < 0 ? 'icons/moraleLow.png' : 'icons/morale.png';
+	}
+	rot(index) {
+		return [
+			this.leadershipPct,
+			this.leadershipPct + this.securityPct,
+			this.leadershipPct + this.securityPct + this.entertainmentPct,
+			this.leadershipPct + this.securityPct + this.entertainmentPct + this.childrenPct
+		][index];
+	}
+}
+
+let DataProductivity = class extends Visual.Data {
+	constructor(dataMorale,dataWellbeing) {
+		super();
+		this.dataMorale = dataMorale;
+		this.dataWellbeing = dataWellbeing;
+		this.init();
+		this.update();
+	}
+	init() {
 		this.skill = 1.2;
-		this.morale = -0.3;
-		this.wellbeing = this[this.wellbeingLeast];
 		this.gear = 0;
 		this.venue = 0;
 		return this;
 	}
 	update() {
-		this.wellbeing = this[this.wellbeingLeast];
+		this.dataMorale.update();
+		this.dataWellbeing.update();
 		return this;
+	}
+	get morale() {
+		return this.dataMorale.value;
+	}
+	get moraleIcon() {
+		return this.dataMorale.icon;
+	}
+	get wellbeing() {
+		return this.dataWellbeing.value;
+	}
+	get wellbeingIcon() {
+		return this.dataWellbeing.icon;
 	}
 	totals(index) {
 		console.assert( index >=0 && index <=4 );
@@ -63,69 +159,8 @@ class ProductivityData extends VisualDataSource {
 			this.skill+this.morale+this.wellbeing+this.gear+this.venue
 		][index];
 	}
-	get wellbeingLeast() {
-		let least = 'food';
-		least = this.water  < this[least] ? 'water'  : least;
-		least = this.rest   < this[least] ? 'rest'   : least;
-		least = this.health < this[least] ? 'health' : least;
-		return least;
-	}
-	get wellbeingIcon() {
-		return this.wellbeingIconHash[this.wellbeingLeast];
-	}
 };
 
-function createPanelProductivity(rootDiv,data) {
-	let root = new Visual.Canvas(rootDiv,ProductivityPanelLayout,data);
-	let layout = root.layout;
-
-	// everything gets a layout fun, so...
-	let visual = root.addVisualHash({
-		skill:		[ new Visual.Sprite('icons/skill.png'),		(v) => layout.xLegend(v,0) ],
-		morale: 	[ new Visual.Sprite('icons/morale.png'),	(v) => layout.xLegend(v,1) ],
-		wellbeing:	[ new Visual.Sprite(null),					(v) => { layout.xLegend(v,2); v.image=data.wellbeingIcon; } ],
-		gear:		[ new Visual.Sprite('icons/goods.png'),		(v) => layout.xLegend(v,3) ],
-		household:	[ new Visual.Sprite('icons/household.png'),	(v) => layout.xLegend(v,4) ],
-		production:	[ new Visual.Sprite('icons/production.png'),(v) => layout.xLegend(v,5.5,1.3) ],
-
-		L0:			[ new Visual.Line('white',2),	(v) => layout.line(v,0) ],
-		L1:			[ new Visual.Line('gray',1),	(v) => layout.line(v,1) ],
-		L2:			[ new Visual.Line('gray',1),	(v) => layout.line(v,2) ],
-
-		title:		[ new Visual.Text('white','Production'), (v) => layout.title(v) ],
-
-		yL0:		[ new Visual.Text('white','0x'), (v) => layout.yLegend(v,0) ],
-		yL1:		[ new Visual.Text('white','1x'), (v) => layout.yLegend(v,1) ],
-		yL2:		[ new Visual.Text('white','2x'), (v) => layout.yLegend(v,2) ],
-
-		b0:			[ new Visual.Sprite(null), (v) => layout.bar(v,0,1, 0.0,data.totals(0) ) ],
-		b1:			[ new Visual.Sprite(null), (v) => layout.bar(v,1,1, data.totals(0),data.totals(1) ) ],
-		b2:			[ new Visual.Sprite(null), (v) => layout.bar(v,2,1, data.totals(1),data.totals(2) ) ],
-		b3:			[ new Visual.Sprite(null), (v) => layout.bar(v,3,1, data.totals(2),data.totals(3) ) ],
-		b4:			[ new Visual.Sprite(null), (v) => layout.bar(v,4,1, data.totals(3),data.totals(4) ) ],
-		b5:			[ new Visual.Sprite(null), (v) => layout.bar(v,5.5,1.3, 0.0,data.totals(4), false) ]
-	});
-
-	visual.skill.link('iconButton')
-		.on('click',()=>{})
-	;
-	visual.morale.link('iconButton')
-		.on('click',()=>{})
-	;
-	visual.wellbeing.link('iconButton')
-		.on('click',()=>{ 
-			data.rest -= 0.1;
-		})
-	;
-	visual.gear.link('iconButton')
-		.on('click',()=>{})
-	;
-	visual.household.link('iconButton')
-		.on('click',()=>{})
-	;
-
-	return root;
-}
 
 
 function onResize() {
@@ -133,15 +168,47 @@ function onResize() {
 		'#guiMain': {
 			height: self => $('body').height() - self.offset().top - parseInt(self.css('margin-bottom'))
 		},
-		'#drawingArea': {
-			height: self => $('#guiMain').height()
+		'#panelWellbeing': {
+			height: self => $('#guiMain').height(),
+			width:  self => $(self).height()*1.6
+		},
+		'#panelProductivity': {
+			height: self => $('#guiMain').height(),
+			width:  self => $(self).height()*1.6
+		},
+		'#panelMorale': {
+			height: self => $('#guiMain').height(),
+			width:  self => $(self).height()*1.6
 		}
 	});
 }
 
 function main() {
-	let data = new ProductivityData();
-	let root = createPanelProductivity('drawingArea',data);
+	let dataWellbeing		= new DataWellbeing();
+	let dataMorale			= new DataMorale();
+	let dataProductivity	= new DataProductivity(dataMorale,dataWellbeing);
+
+	let panelProductivity = new Visual.Canvas( 'panelProductivity', root => {
+		root.addData(		dataProductivity );
+		root.addLayout(		new PanelProductivity.Layout(root) );
+		root.addVisuals(	new PanelProductivity.Visuals(root) );
+		root.addElements(	new PanelProductivity.Elements(root) );
+	});
+
+	let panelMorale = new Visual.Canvas( 'panelMorale', root => {
+		root.addData(		dataMorale );
+		root.addLayout(		new PanelMorale.Layout(root) );
+		root.addVisuals(	new PanelMorale.Visuals(root) );
+		root.addElements(	new PanelMorale.Elements(root) );
+	});
+
+	let panelWellbeing = new Visual.Canvas( 'panelWellbeing', root => {
+		root.addData(		dataWellbeing );
+		root.addLayout(		new PanelWellbeing.Layout(root) );
+		root.addVisuals(	new PanelWellbeing.Visuals(root) );
+		root.addElements(	new PanelWellbeing.Elements(root) );
+	});
+
 	window.addEventListener('resize', onResize );
 	onResize();
 
@@ -151,8 +218,12 @@ function main() {
 	}, 100 );
 
 	Time.animationFrameTicker( dt => {
-		root.tick(dt);
-		root.render();
+		panelWellbeing.tick(dt);
+		panelWellbeing.render();
+		panelProductivity.tick(dt);
+		panelProductivity.render();
+		panelMorale.tick(dt);
+		panelMorale.render();
 	});
 }
 
@@ -162,8 +233,12 @@ function main() {
 
 </head>
 <body style='overflow-x: hidden; overflow-y: hidden;'>
-	<div id="guiMain" style="position: absolute; width: 600px; margin:30px;">
-		<div id="drawingArea">
+	<div id="guiMain" style="position: absolute; width: 100%;">
+		<div id="panelProductivity" style="display:inline-block;">
+		</div>
+		<div id="panelMorale" style="display:inline-block;">
+		</div>
+		<div id="panelWellbeing" style="display:inline-block;">
 		</div>
 	</div>
 	<script>
