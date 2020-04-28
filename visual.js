@@ -12,7 +12,7 @@ class Visual {
 		this.x = 0;
 		this.y = 0;
 		this.layoutFn = null;
-		this.elementLayoutFn = null;
+		this.footprintFn = null;
 	}
 	get root() {
 		return this.parent || this;
@@ -21,19 +21,30 @@ class Visual {
 	}
 	get height() {
 	}
+	get rect() {
+		let margin = this.margin||0;
+		return {
+			x: this.x-this.xAnchor*this.width-margin,
+			y: this.y-this.yAnchor*this.height-margin,
+			width: this.width+margin*2,
+			height: this.height+margin*2
+		}
+	}
 	add(visual) {
 		console.assert(false);
 	}
 	align() {
 		if( !this.element ) return;
-		let r = this.rect;
-		this.element.style.left = r.x;
-		this.element.style.top = r.y;
-		this.element.style.width = r.width;
-		this.element.style.height = r.height;
+		let r = this.footprintFn ? this.footprintFn(this) : this.rect;
+		this.element.style.left		= r.x;
+		this.element.style.top		= r.y;
+		this.element.style.width	= r.width;
+		this.element.style.height	= r.height;
+
+		this.element.style.visibility = this.visible!==false ? 'visible' : 'hidden';
 	}
-	link(className,elementLayoutFn) {
-		return this.root.addElement(this,className,elementLayoutFn);
+	link(className,footprintFn) {
+		return this.root.addElement(this,className,footprintFn);
 	}
 	on(eventId,fn) {
 		return this.root.on(this.element,eventId,fn);
@@ -42,12 +53,7 @@ class Visual {
 		if( this.layoutFn ) {
 			this.layoutFn(this);
 		}
-		if( this.element && !this.elementLayoutFn ) {
-			this.align();
-		}
-		if( this.elementLayoutFn ) {
-			this.elementLayoutFn(this);
-		}
+		this.align();
 	}
 	tick(dt) {
 	}
@@ -76,6 +82,19 @@ Visual.Line = class extends Visual {
 	}
 }
 
+Visual.Blank = class extends Visual {
+	constructor() {
+		super();
+		this._width  = 0;
+		this._height = 0;
+	}
+	get width() {
+		return this._width;
+	}
+	get height() {
+		return this._height;
+	}
+}
 
 Visual.Sprite = class extends Visual {
 	constructor(imageUrl) {
@@ -98,14 +117,6 @@ Visual.Sprite = class extends Visual {
 			ImgCache[url].onload = () => ImgCache[url].loaded = true;
 		}
 		this._image = ImgCache[url];
-	}
-	get rect() {
-		return {
-			x: this.x-this.xAnchor*this.width-this.margin,
-			y: this.y-this.yAnchor*this.height-this.margin,
-			width: this.width+this.margin*2,
-			height: this.height+this.margin*2
-		}
 	}
 	get image() {
 		return this._image;
@@ -159,7 +170,7 @@ Visual.Text = class extends Visual {
 		this.color = color || 'white';
 		this.text = text || '';
 		this.xAnchor = 0.5;
-		this.yAnchor = 0.3;
+		this.yAnchor = 0.5;
 		this.textWidth = null
 		this.textHeight = null;
 	}
@@ -170,14 +181,23 @@ Visual.Text = class extends Visual {
 		this.root.context.font = ''+px+'px Arial';
 		return this.root.context.measureText(this.text).width;
 	}
+	get width() {
+		return this.lastWidth;
+	}
+	get height() {
+		return this.lastHeight;
+	}
 	render() {
 		console.assert( this.textWidth!==null || this.textHeight!==null );
 		let fontSize = Math.floor( this.textHeight ? this.textHeight : this.textWidthAt(100)/100*this.textWidth );
+		this.lastHeight = fontSize;
 		this.root.context.fillStyle = this.color;
 		this.root.context.strokeStyle = this.color;
 		this.root.context.font = ''+fontSize+'px Arial';
 		let w = this.textWidthAt(fontSize);
-		this.root.context.fillText( this.text, this.x-this.xAnchor*w, this.y+this.yAnchor*fontSize );
+		let crazyyAnchorOffset = -0.8;
+		this.root.context.fillText( this.text, this.x-this.xAnchor*w, this.y-(this.yAnchor+crazyyAnchorOffset)*fontSize );
+		this.lastWidth = w;
 		super.render();
 	}
 }
@@ -314,14 +334,14 @@ Visual.Canvas = class {
 	on(element,eventId,fn) {
 		return element.on( eventId, fn );
 	}
-	addElement(visual,className,elementLayoutFn) {
+	addElement(visual,className,footprintFn) {
 		let element = document.createElement("div");
 		element.style.position = "absolute";
 		element.classList.add(className);
 		this.overlay.appendChild(element);
 		this.element[visual.id] = element;
-		visual.element   = element;
-		visual.elementLayoutFn = elementLayoutFn;
+		visual.element			= element;
+		visual.footprintFn		= footprintFn;
 		return element;
 	}
 	traverse(fn) {

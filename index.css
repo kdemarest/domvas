@@ -6,3 +6,17 @@ div.iconButton:hover {
 	border: 2px solid cyan;
 	border-radius: 6px;
 }
+
+div.wellbeingPick:hover {
+	border: 2px solid cyan;
+	border-radius: 6px;
+	border-right-style: none;
+	border-top-right-radius: 0px;
+	border-bottom-right-radius: 0px;
+}
+
+div.wellbeingInfo {
+	color: #CCC;
+	font-size: 7vh;
+
+}

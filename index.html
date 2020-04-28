@@ -33,18 +33,29 @@ let DataWellbeing = class extends Visual.Data {
 			starving:	'icons/food.png',
 			thirsty:	'icons/water.png'
 		}
-		this.info = '';
+		this.info = {
+			wb: false,
+			text: ''
+		};
 		this.init();
 		this.update();
 	}
+	traverse(fn) {
+		return this.wbList.forEach( fn );
+	}
 	init() {
-		this.wbList.forEach( (wb,index) => this[wb] = index*0.1 );//Math.fChance(0.50) ? 0.0 : Math.rand(0.1,0.8) );
+		this.traverse( (wb,index) => this[wb] = index*0.1 );//Math.fChance(0.50) ? 0.0 : Math.rand(0.1,0.8) );
 	}
 	update() {
-		this.wbList.forEach( wb => this[wb] = Math.clamp( this[wb], 0.0, 1.0 ) );
+		this.traverse( wb => this[wb] = Math.clamp( this[wb], 0.0, 1.0 ) );
 	}
-	analyze(aspectId) {
-		this.info = 'hovering '+aspectId;
+	get infoBlank() {
+		return this.info.wb === false;
+	}
+	setInfo(wb,text) {
+		this.info.wb = wb;
+		this.info.rowIndex = this.wbList.indexOf(wb);
+		this.info.text = text;
 	}
 	barrelText(rowIndex) {
 		let temp = [0,23];
@@ -52,7 +63,7 @@ let DataWellbeing = class extends Visual.Data {
 	}
 	get worst() {
 		let w = { value:0, wb: '', index: null, icon: null };
-		this.wbList.forEach( (wb,index) => {
+		this.traverse( (wb,index) => {
 			if( this[wb] > w.value ) {
 				w.wb =  wb;
 				w.index = index;
@@ -233,10 +244,10 @@ function main() {
 </head>
 <body style='overflow-x: hidden; overflow-y: hidden;'>
 	<div id="guiMain" style="position: absolute; width: 100%;">
-		<div id="panelProductivity" style="display:inline-block;">
+		<!--div id="panelProductivity" style="display:inline-block;">
 		</div>
 		<div id="panelMorale" style="display:inline-block;">
-		</div>
+		</div-->
 		<div id="panelWellbeing" style="display:inline-block;">
 		</div>
 	</div>
