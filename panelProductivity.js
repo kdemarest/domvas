@@ -109,7 +109,7 @@ PanelProductivity.Visuals = function (root) {
 		morale: 	[ new Visual.Sprite('icons/morale.png'),	(v) => { layout.xLegend(v,1,0.9); v.image=data.moraleIcon; } ],
 		wellbeing:	[ new Visual.Sprite(null),					(v) => { layout.xLegend(v,2); v.image=data.wellbeingIcon; } ],
 		gear:		[ new Visual.Sprite('icons/goods.png'),		(v) => layout.xLegend(v,3) ],
-		household:	[ new Visual.Sprite('icons/household.png'),	(v) => layout.xLegend(v,4) ],
+		household:	[ new Visual.Sprite('icons/venue.png'),		(v) => layout.xLegend(v,4) ],
 		production:	[ new Visual.Sprite('icons/production.png'),(v) => layout.xLegend(v,5.2,1.3) ],
 
 		L0:			[ new Visual.Line('white',2),	(v) => layout.line(v,0) ],
