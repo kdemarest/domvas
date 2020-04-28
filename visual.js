@@ -88,6 +88,7 @@ Visual.Sprite = class extends Visual {
 		this.xAnchor = 0.5;
 		this.yAnchor = 0.5;
 		this.margin = 0;
+		this.alpha = null;
 	}
 	set image(url) {
 		if( url === null ) return;
@@ -131,13 +132,22 @@ Visual.Sprite = class extends Visual {
 	}
 	render() {
 		if( this._image.loaded ) {
-			this.root.context.drawImage(
+			let ctx = this.root.context;
+			let alphaOld;
+			if( Number.isFinite(this.alpha) ) {
+				alphaOld = ctx.globalAlpha;
+				ctx.globalAlpha = this.alpha;
+			}
+			ctx.drawImage(
 				this.image,
 				this.x-this.xAnchor*this.width,
 				this.y-this.yAnchor*this.height,
 				this.width,
 				this.height
 			);
+			if( Number.isFinite(this.alpha) ) {
+				ctx.globalAlpha = alphaOld;
+			}
 		}
 		super.render();
 	}
@@ -146,8 +156,8 @@ Visual.Sprite = class extends Visual {
 Visual.Text = class extends Visual {
 	constructor(color,text) {
 		super();
-		this.color = color;
-		this.text = text;
+		this.color = color || 'white';
+		this.text = text || '';
 		this.xAnchor = 0.5;
 		this.yAnchor = 0.3;
 		this.textWidth = null
@@ -177,8 +187,8 @@ Visual.Arc = class extends Visual {
 		super();
 		this.color  = color || 'white';
 		this.fill	= fill || 'grey';
-		this.outer = outer;
 		this.inner  = inner;
+		this.outer = outer;
 		this.start  = start;
 		this.end    = end;
 		this.thickness = thickness;
@@ -188,6 +198,15 @@ Visual.Arc = class extends Visual {
 		let pt = (radians,dist) => [ this.x+Math.cos(radians)*dist, this.y+Math.sin(radians)*dist ];
 
 		let ctx = this.root.context;
+
+		if( this.backgroundFill ) {
+			ctx.fillStyle   = this.backgroundFill;
+			ctx.strokeStyle = 'rgba(0,0,0,0)';
+			ctx.beginPath();
+			ctx.arc( this.x, this.y, this.outer, 0.0, Math.PI*2 );
+			ctx.fill();
+		}
+
 		ctx.fillStyle   = this.fill;
 		ctx.strokeStyle = this.color;
 		ctx.lineWidth	= this.thickness;
@@ -195,11 +214,19 @@ Visual.Arc = class extends Visual {
 		console.assert( this.start <= this.end );
 
 		ctx.beginPath();
-		ctx.moveTo( ...pt(this.start,this.inner) );
-		ctx.lineTo( ...pt(this.start,this.outer) );
-		ctx.arc( this.x, this.y, this.outer, this.start, this.end );
-		ctx.lineTo( ...pt(this.end,this.inner) );
-		ctx.arc( this.x, this.y, this.inner, this.end, this.start, true );
+		let arcAmount = Math.abs(this.start-this.end);
+		if( this.noLineOnEmptyAndFull && ( arcAmount >= Math.PI*2 || arcAmount <= 0) ) {
+			ctx.strokeStyle = 'rgba(0,0,0,0)';
+			ctx.arc( this.x, this.y, this.inner, this.start, this.end );
+			ctx.arc( this.x, this.y, this.outer, this.start, this.end );
+		}
+		else {
+			ctx.moveTo( ...pt(this.start,this.inner) );
+			ctx.lineTo( ...pt(this.start,this.outer) );
+			ctx.arc( this.x, this.y, this.outer, this.start, this.end );
+			ctx.lineTo( ...pt(this.end,this.inner) );
+			ctx.arc( this.x, this.y, this.inner, this.end, this.start, true );
+		}
 		ctx.fill();
 		ctx.stroke();
 	}
@@ -311,7 +338,7 @@ Visual.Canvas = class {
 	render() {
 		this.context.fillStyle = 'black';
 		this.context.fillRect(0,0,this.width,this.height);
-		this.traverse( visual => visual.render() );
+		this.traverse( visual => visual.visible !== false ? visual.render() : null );
 	}
 }
 

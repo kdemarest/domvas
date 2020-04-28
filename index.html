@@ -23,51 +23,50 @@ Module.realize();
 let DataWellbeing = class extends Visual.Data {
 	constructor() {
 		super();
+		this.wbList = ['overworked','homeless','wounded','diseased','starving','thirsty'];
+
 		this.iconHash = {
-			food:	'icons/food.png',
-			water:	'icons/water.png',	
-			rest:	'icons/rest.png',
-			health:	'icons/health.png'
+			overworked:	'icons/rest.png',
+			homeless:	'icons/rest.png',	
+			wounded:	'icons/health.png',
+			diseased:	'icons/health.png',
+			starving:	'icons/food.png',
+			thirsty:	'icons/water.png'
 		}
 		this.info = '';
 		this.init();
 		this.update();
 	}
 	init() {
-		this.food = -0.2;	// converted from 0-200% to -1.0 to +1.0
-		this.water = 0.0;
-		this.rest = -0.1;
-		this.health = 0.0;
+		this.wbList.forEach( (wb,index) => this[wb] = index*0.1 );//Math.fChance(0.50) ? 0.0 : Math.rand(0.1,0.8) );
 	}
 	update() {
-		this.food	= Math.clamp(this.food,-1.0,0.0);	// converted from 0-200% to -1.0 to +1.0
-		this.water	= Math.clamp(this.water,-1.0,0.0);
-		this.rest	= Math.clamp(this.rest,-1.0,0.0);
-		this.health	= Math.clamp(this.health,-1.0,0.0);
-	}
-	time(aspectId) {
-		let value = this[aspectId];
-		console.assert( Number.isFinite(value) );
-		let color = value < -0.5 ? 'red' : value < 0.0 ? 'yellow' : 'white';
-		let text = value < 0 ? '2w' : '';
-		return { color: color, text: text };
+		this.wbList.forEach( wb => this[wb] = Math.clamp( this[wb], 0.0, 1.0 ) );
 	}
 	analyze(aspectId) {
 		this.info = 'hovering '+aspectId;
 	}
-	get least() {
-		let least = 'food';
-		least = this.water  < this[least] ? 'water'  : least;
-		least = this.rest   < this[least] ? 'rest'   : least;
-		least = this.health < this[least] ? 'health' : least;
-		return least;
+	barrelText(rowIndex) {
+		let temp = [0,23];
+		return temp[rowIndex];
+	}
+	get worst() {
+		let w = { value:0, wb: '', index: null, icon: null };
+		this.wbList.forEach( (wb,index) => {
+			if( this[wb] > w.value ) {
+				w.wb =  wb;
+				w.index = index;
+				w.value = this[wb];
+				w.icon = this.iconHash[wb]
+			}
+		});
+		return w;
 	}
 	get value() {
-		return Math.clamp( this[this.least], -1.0, 0.0 );
+		return this.worst.value;
 	}
-
 	get icon() {
-		return this.iconHash[this.least];
+		return this.worst.icon;
 	}
 }
 
@@ -187,7 +186,7 @@ function main() {
 	let dataWellbeing		= new DataWellbeing();
 	let dataMorale			= new DataMorale();
 	let dataProductivity	= new DataProductivity(dataMorale,dataWellbeing);
-
+/*
 	let panelProductivity = new Visual.Canvas( 'panelProductivity', root => {
 		root.addData(		dataProductivity );
 		root.addLayout(		new PanelProductivity.Layout(root) );
@@ -201,7 +200,7 @@ function main() {
 		root.addVisuals(	new PanelMorale.Visuals(root) );
 		root.addElements(	new PanelMorale.Elements(root) );
 	});
-
+*/
 	let panelWellbeing = new Visual.Canvas( 'panelWellbeing', root => {
 		root.addData(		dataWellbeing );
 		root.addLayout(		new PanelWellbeing.Layout(root) );
@@ -220,10 +219,10 @@ function main() {
 	Time.animationFrameTicker( dt => {
 		panelWellbeing.tick(dt);
 		panelWellbeing.render();
-		panelProductivity.tick(dt);
-		panelProductivity.render();
-		panelMorale.tick(dt);
-		panelMorale.render();
+//		panelMorale.tick(dt);
+//		panelMorale.render();
+//		panelProductivity.tick(dt);
+//		panelProductivity.render();
 	});
 }
 

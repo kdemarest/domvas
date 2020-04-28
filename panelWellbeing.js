@@ -4,69 +4,88 @@ let PanelWellbeing = {};
 
 PanelWellbeing.Layout = (function(root) {
 
-	let marginPct	= 0.05;
-	let yTitlePct	= 0.14;
-	let yFloorPct	= 0.58;
-	let yInfoPct	= 0.90;
-	let yMidlinePct = (yFloorPct+yTitlePct)*0.5;
-	let body		= ()=> ({
-		x: root.width*marginPct,
-		y: root.height*yTitlePct,
-		width: root.width*0.90,
-		height: root.height*(yFloorPct-yTitlePct)
-	});
-	let xCenter		= ()=>root.width*0.50;
-	let yFloor  	= ()=>root.height*yFloorPct;
-	let xCol		= (colIndex)=>body().x+body().width*0.25*(colIndex+0.5);
-	let yMidline	= ()=>root.height*yMidlinePct;
+	let pieRot		= Math.PI*1.5;	// North
+	let trans		= 'rgba(0,0,0,0)';
+
+	let yTitle		= 0.14;			// the title's bottom
+	let yBodyTop	= 0.20;
+	let yBodyBtm	= 0.95;
+	let yBodySpan	= (yBodyBtm-yBodyTop)/6;
+	let xPointer	= 0.06;
+	let xPie		= 0.15;
+	let xIssue		= 0.20;
+	let xIssueWidth	= 0.30;
+	let xBarrel		= 0.70;
+	let xBarrelSpan	= 0.10;
+	let yBarrel		= 0.60;
+	let yBarrelKey  = 0.80;
+
+	let w = (pct) => root.width*pct;
+	let h = (pct) => root.height*pct;
+
+	let row			= rowIndex => h(yBodyTop + yBodySpan*(rowIndex+0.5));
+	let colBarrel	= rowIndex => w(xBarrel + xBarrelSpan*(rowIndex+0.5));
+	let colorFor	= (pct) => {
+		let c= pct==0 ? '2' : '6789ABCD'.charAt(Math.clamp(Math.floor(pct*8),0,7));
+		return '#'+c+c+c; }
 
 	this.title = (v) => {
-		v.x = xCenter();
-		v.y = root.height * (yTitlePct*0.5);
-		v.textHeight = Math.floor(root.height * yTitlePct * 0.90);
+		v.x = w(0.50);
+		v.y = h(yTitle*0.5);
+		v.textHeight = Math.floor(h(yTitle * 0.90));
 	}
 
-	this.info = (v) => {
-		v.x = xCenter();
-		v.y = root.height*(1.0+yInfoPct)*0.5;
-		v.textHeight = Math.floor(root.height * (1-yInfoPct) * 0.90);
-	}
-
-	this.icon = (v,colIndex) => {
-		[v.x,v.y] = [xCol(colIndex),root.height*(yFloorPct+yInfoPct)*0.5];
-		v.scaleToHeight(root.height*(yInfoPct-yFloorPct)*0.50);
-	}
-
-	this.midLine = (v,index) => {
-		[v.x,v.y]   = [body().x,yMidline()];
-		[v.ex,v.ey] = [body().x+body().width,yMidline()];
-	}
-
-	this.leastLine = (v,pct) => {
-		v.dash = [5,5];
-		[v.x,v.y]   = [body().x,yMidline()+(yFloor()-yMidline())*(-pct)];
-		[v.ex,v.ey] = [body().x+body().width,v.y];
-	}
-
-	this.bar = (v,colIndex,pct) => {
-		v.x = xCol(colIndex);
-		v.y = yMidline();
-		v.yAnchor = 1.0;
-		v.xScale = (body().width*0.25*0.70)/v.naturalWidth * 1.5;	// the 1.5 just makes em thicker
-		v.yScale = Math.abs(yFloor()-yMidline())/v.naturalHeight*pct;
-		if( Math.abs(v.yScale) <= 2 ) {
-			v.yScale = 3;
-			v.y += 1;
+	this.pointer = (v,rowIndex) => {
+		if( rowIndex === null ) {
+			v.visible = false;
+			return;
 		}
- 	}
-
-	this.time = (v,colIndex,details) => {
-		v.color = details.color;
-		v.setText(details.text);
-		[v.x,v.y] = [xCol(colIndex),root.height*(yMidlinePct+yTitlePct)*0.5];
-		v.textHeight = Math.floor( root.height*0.10 );
+		v.x = w(xPointer);
+		v.y = row(rowIndex);
+		v.scaleToHeight(h(yBodySpan));
 	}
 
+	this.pie = (v,rowIndex,pct) => {
+		v.x = w(xPie);
+		v.y = row(rowIndex);
+		v.inner = 0;
+		v.outer = h(yBodySpan * (0.50*0.80));
+		v.start = pieRot+0;
+		v.end   = pieRot+Math.PI*2*pct;
+		v.noLineOnEmptyAndFull = true;
+		v.color			= pct==0 ? trans : colorFor(pct);
+		v.fill			= pct==0 ? trans : colorFor(pct);
+		v.backgroundFill= pct==0 ? null  : colorFor(0);
+		v.hint = rowIndex;
+	}
+
+	this.issue = (v,rowIndex,pct) => {
+		v.x = w(xIssue);
+		v.y = row(rowIndex);
+		v.xAnchor = 0.0;
+		v.color = colorFor(pct);
+		v.textHeight = h(yBodySpan*0.80);
+	}
+
+	this.barrel = (v,colIndex) => {
+		v.x = w(xBarrel+xBarrelSpan*colIndex);
+		v.y = h(yBarrel);
+		v.alpha = 0.50;
+		v.scaleToHeight(h(0.20));
+	}
+
+	this.barrelKey = (v,colIndex) => {
+		v.x = w(xBarrel+xBarrelSpan*colIndex);
+		v.y = h(yBarrelKey);
+		v.scaleToHeight(h(0.10));
+	}
+
+	this.barrelText = (v,colIndex,text) => {
+		v.x = w(xBarrel+xBarrelSpan*colIndex);
+		v.y = h(yBarrel);
+		v.textHeight = h(0.10);
+		v.text = text;
+	}
 
 	return this;
 });
@@ -77,56 +96,30 @@ PanelWellbeing.Visuals = function (root) {
 	let data   = root.data;
 
 	// everything gets a layout fun, so...
-	return {
-		title:		[ new Visual.Text('white','Wellbeing'), (v) => layout.title(v) ],
-		info:		[ new Visual.Text('white',''), (v) => { layout.info(v); v.setText(data.info); } ],
+	let visuals = {};
 
-		food:		[ new Visual.Sprite('icons/food.png'),		(v) => layout.icon(v,0) ],
-		water:		[ new Visual.Sprite('icons/water.png'),		(v) => layout.icon(v,1) ],
-		rest:		[ new Visual.Sprite('icons/rest.png'),		(v) => layout.icon(v,2) ],
-		health:		[ new Visual.Sprite('icons/health.png'),	(v) => layout.icon(v,3) ],
+	visuals.title   = [ new Visual.Text('white','Town Wellbeing'), (v) => layout.title(v) ];
+	visuals.pointer = [ new Visual.Sprite('icons/pointer.png'), (v) => layout.pointer(v,data.worst.index) ];
 
-		midLine:	[ new Visual.Line('gray',1),	(v) => layout.midLine(v) ],
-		leastLine:	[ new Visual.Line('gray',1),	(v) => layout.leastLine(v,data.value) ],
+	data.wbList.forEach( (wb,rowIndex) => {
+		visuals[wb+'Pie']   = [ new Visual.Arc(), (v) => layout.pie(v,rowIndex,data[wb]) ];
+		visuals[wb+'Issue'] = [ new Visual.Text(null,String.capitalize(wb)), (v) => layout.issue(v,rowIndex,data[wb]) ];
+	});
 
-		b0:			[ new Visual.Sprite('icons/vertBar.png'), (v) => layout.bar(v,0,data.food) ],
-		b1:			[ new Visual.Sprite('icons/vertBar.png'), (v) => layout.bar(v,1,data.water) ],
-		b2:			[ new Visual.Sprite('icons/vertBar.png'), (v) => layout.bar(v,2,data.rest) ],
-		b3:			[ new Visual.Sprite('icons/vertBar.png'), (v) => layout.bar(v,3,data.health) ],
+	visuals.ba0 = [ new Visual.Sprite('icons/barrel.png'), (v) => layout.barrel(v,0) ];
+	visuals.bt0 = [ new Visual.Text(), (v) => layout.barrelText(v,0,data.barrelText(0)) ];
+	visuals.bk0 = [ new Visual.Sprite('icons/food.png'), (v) => layout.barrelKey(v,0) ];
 
-		timeFood:	[ new Visual.Text('white',''),	(v) => layout.time(v,0,data.time('food')) ],
-		timeWater:	[ new Visual.Text('white',''),	(v) => layout.time(v,1,data.time('water')) ],
-		timeRest:	[ new Visual.Text('white',''),	(v) => layout.time(v,2,data.time('rest')) ],
-		timeHealth:	[ new Visual.Text('white',''),	(v) => layout.time(v,3,data.time('health')) ],
+	visuals.ba1 = [ new Visual.Sprite('icons/barrel.png'), (v) => layout.barrel(v,1) ];
+	visuals.bt1 = [ new Visual.Text(), (v) => layout.barrelText(v,1,data.barrelText(1)) ];
+	visuals.bk1 = [ new Visual.Sprite('icons/water.png'), (v) => layout.barrelKey(v,1) ];
 
-	}
+	return visuals;
 }
-
 PanelWellbeing.Elements = function(root) {
 	console.assert( root && root.visual && root.data );
 	let visual	= root.visual;
 	let data	= root.data;
-
-	visual.food.link('iconButton')
-		.on('click',()=>{ data.food -= 0.1; })
-		.on('mouseover',()=>data.analyze('food'))
-		.on('mouseout',()=>data.info='')
-	;
-	visual.water.link('iconButton')
-		.on('click',()=>{})
-		.on('mouseover',()=>data.analyze('water'))
-		.on('mouseout',()=>data.info='')
-	;
-	visual.rest.link('iconButton')
-		.on('click',()=>{})
-		.on('mouseover',()=>data.analyze('rest'))
-		.on('mouseout',()=>data.info='')
-	;
-	visual.health.link('iconButton')
-		.on('click',()=>{})
-		.on('mouseover',()=>data.analyze('health'))
-		.on('mouseout',()=>data.info='')
-	;
 }
 
 return {
